@@ -1,0 +1,50 @@
+#!/bin/sh
+# Simple shell script that counts the number of files within a directory and all of its children, and also reports how many times a specified phrase appears in said directory.
+# Author: Jack Napoli
+
+# INVOKATION:
+# This command is used as follows:
+# finder.sh <arg1> <arg2>
+# Full Example: finder.sh /tmp/aesd/assignment1 linux
+
+# ARGUMENTS:
+# <arg1>
+    # Variable Name: filesdir
+    # Type: String
+    # Purpose: The path to the directory that should be searched
+    # Example: /tmp/aesd/assignment1
+# <arg2>
+    # Variable Name: searchstr
+    # Type: string
+    # Purpose: The text string that shall be searched for within the specified directory
+    # Example "hello, world"
+
+# ERROR CASES:
+# Program shall return an error value 1 in the event that:
+    # 1. If any of the above parameters are not specified
+    # 2. If filesdir does not represent a proper directory on the filesystem
+
+# Store arguments in variables
+filesdir=$1
+searchstr=$2
+
+# Check if both arguments are provided
+if [ $# -ne 2 ]; then
+    echo "Error: Two arguments required."
+    echo "Usage: finder.sh <filesdir> <searchstr>"
+    exit 1
+fi
+
+# Check if filesdir is a valid directory
+if [ ! -d "$filesdir" ]; then
+    echo "Error: $filesdir is not a directory."
+    exit 1
+fi
+
+# Count the number of files in the directory and subdirectories
+num_files=$(find "$filesdir" -type f | wc -l)
+
+# Count the number of matching lines containing searchstr
+num_matches=$(grep -r "$searchstr" "$filesdir" 2>/dev/null | wc -l)
+
+echo "The number of files are $num_files and the number of matching lines are $num_matches"

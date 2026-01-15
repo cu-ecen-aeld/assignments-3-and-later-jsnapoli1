@@ -1,0 +1,53 @@
+#!/bin/sh
+# Creates a new file with name and path writefile with content writestr, overwriting any existing file and creating the path if it does not exist.
+# Author: Jack Napoli
+
+# INVOKATION:
+# This command is used as follows:
+# writer.sh <arg1> <arg2>
+# Full Example: writer.sh /tmp/aesd/assignment1/sample.txt ios
+
+# ARGUMENTS:
+# <arg1>
+    # Variable Name: writefile
+    # Type: String
+    # Purpose: The path to the text file that should be created
+    # Example: /tmp/aesd/assignment1/sample.txt
+# <arg2>
+    # Variable Name: writestr
+    # Type: string
+    # Purpose: The text string that should be placed inside of the created file
+    # Example "hello, world"
+
+# ERROR CASES:
+# Program shall return an error value 1 in the event that:
+    # 1. If any of the above parameters are not specified
+
+# THINGS TO NOTE:
+# - If the directory does not exist, you SHOULD create the respective directories for this file to exist.
+
+writefile=$1
+writestr=$2
+
+# Check that both arguments are provided
+if [ -z "$writefile" ] || [ -z "$writestr" ]; then
+    echo "Error: Two arguments required: <writefile> <writestr>"
+    exit 1
+fi
+
+# Create the directory path if it doesn't exist
+dirpath=$(dirname "$writefile")
+if [ ! -d "$dirpath" ]; then
+    mkdir -p "$dirpath"
+    if [ $? -ne 0 ]; then
+        echo "Error: Could not create directory $dirpath"
+        exit 1
+    fi
+fi
+
+# Write the content to the file
+echo "$writestr" > "$writefile"
+if [ $? -ne 0 ]; then
+    echo "Error: Could not write to file $writefile"
+    exit 1
+fi
