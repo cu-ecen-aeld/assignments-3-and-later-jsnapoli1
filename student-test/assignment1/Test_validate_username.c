@@ -15,6 +15,8 @@
 void test_validate_my_username()
 {
     // Step 1: Store expected value
+    // my_username() returns a pointer to a string literal (static storage),
+    // so it's const and does not need to be freed.
     const char *my_name = my_username();
 
     // Step 2: Store the current value
