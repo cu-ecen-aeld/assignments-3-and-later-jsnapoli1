@@ -73,7 +73,12 @@ assignment-1-jsnapoli1/
 ```
 
 (Disclosure: The above file tree was generated as markdown text by Claude Code, to simplify formatting)
+
 ## AI Use
+
+Claude Code was utilized for this project in conjuction with the course's AI policy. Each individual file has a link to a Github Gist that shows how Claude was used.
+Here is the final gist, which shows a codebase review utilizing the rubric on Canvas: https://gist.github.com/jsnapoli1/9f229178c296b1b099e7f8e213174ddd
+
 ### Prompts Used
 - "Please review the documented notes within finder.sh and recommend a preliminary implementation of the features discussed"
 - "Please review the documented notes within writer.sh and recommend a preliminary implementation of the features discussed"
