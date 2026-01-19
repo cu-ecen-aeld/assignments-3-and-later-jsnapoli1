@@ -24,6 +24,7 @@ The purpose of this assignment is to familiarize students with scripting using B
 	- **Return Values**:
 		- 1: error. Printed if the file could not be created.
 ## Repository Structure
+```
 assignment-1-jsnapoli1/
 ├── .github/
 │   └── workflows/
@@ -69,6 +70,7 @@ assignment-1-jsnapoli1/
 │   ├── Unity/                           (submodule – third party)
 │   └── ...
 └── build/                               (generated build artifacts)
+```
 
 (Disclosure: The above file tree was generated as markdown text by Claude Code, to simplify formatting)
 ## AI Use
