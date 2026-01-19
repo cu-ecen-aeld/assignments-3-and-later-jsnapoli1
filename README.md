@@ -24,55 +24,51 @@ The purpose of this assignment is to familiarize students with scripting using B
 	- **Return Values**:
 		- 1: error. Printed if the file could not be created.
 ## Repository Structure
-  assignment-1-jsnapoli1/
-  ├── .github/
-  │   └── workflows/
-  │       └── github-actions.yml          (supplied by professor)
-  ├── .gitignore                          (supplied by professor)
-  ├── .gitlab-ci.yml                      (supplied by professor)
-  ├── .gitmodules                         (supplied by professor)
-  ├── CMakeLists.txt                      (supplied by professor)
-  ├── LICENSE                             (supplied by professor)
-  ├── README.md                           (supplied by professor)
-  ├── full-test.sh                        (supplied by professor)
-  ├── unit-test.sh                        (supplied by professor)
-  │
-  ├── conf/
-  │   ├── assignment.txt                  (supplied by professor)
-  │   └── username.txt                    (supplied by professor)
-  │
-  ├── examples/
-  │   └── autotest-validate/
-  │       ├── .gitignore                  (supplied by professor)
-  │       ├── Makefile                    (supplied by professor)
-  │       ├── autotest-validate-main.c   (supplied by professor)
-  │       ├── autotest-validate.c        (supplied by professor)
-  │       └── autotest-validate.h        (supplied by professor)
-  │
-  ├── finder-app/
-  │   ├── finder-test.sh                  (supplied by professor)
-  │   ├── finder.sh                       (created by jsnapoli1)
-  │   └── writer.sh                       (created by jsnapoli1)
-  │
-  ├── student-test/
-  │   └── assignment1/
-  │       ├── Test_validate_username.c        (supplied by professor)
-  │       └── Test_validate_username_Runner.c (supplied by professor)
-  │
-  ├── assignment-autotest/                (submodule - supplied by professor)
-  │   ├── CMakeLists.txt
-  │   ├── auto_generate.sh
-  │   ├── full-test.sh
-  │   ├── test-basedir.sh
-  │   ├── test-unit.sh
-  │   ├── test/
-  │   │   ├── assignment1/
-  │   │   ├── assignment2/
-  │   │   └── ...
-  │   ├── Unity/                          (submodule - third party)
-  │   └── ...
-  │
-  └── build/                              (generated build artifacts)
+assignment-1-jsnapoli1/
+├── .github/
+│   └── workflows/
+│       └── github-actions.yml            (supplied by professor)
+├── .gitignore                            (supplied by professor)
+├── .gitlab-ci.yml                        (supplied by professor)
+├── .gitmodules                           (supplied by professor)
+├── CMakeLists.txt                        (supplied by professor)
+├── LICENSE                               (supplied by professor)
+├── README.md                             (supplied by professor)
+├── full-test.sh                          (supplied by professor)
+├── unit-test.sh                          (supplied by professor)
+├── conf/
+│   ├── assignment.txt                   (supplied by professor)
+│   └── username.txt                     (supplied by professor)
+├── examples/
+│   └── autotest-validate/
+│       ├── .gitignore                   (supplied by professor)
+│       ├── Makefile                     (supplied by professor)
+│       ├── autotest-validate-main.c     (supplied by professor)
+│       ├── autotest-validate.c          (supplied by professor)
+│       └── autotest-validate.h          (supplied by professor)
+├── finder-app/
+│   ├── finder-test.sh                   (supplied by professor)
+│   ├── finder.sh                        (created by jsnapoli1)
+│   └── writer.sh                        (created by jsnapoli1)
+├── student-test/
+│   └── assignment1/
+│       ├── Test_validate_username.c
+│       │                                   (supplied by professor)
+│       └── Test_validate_username_Runner.c
+│                                           (supplied by professor)
+├── assignment-autotest/                 (submodule – supplied by professor)
+│   ├── CMakeLists.txt
+│   ├── auto_generate.sh
+│   ├── full-test.sh
+│   ├── test-basedir.sh
+│   ├── test-unit.sh
+│   ├── test/
+│   │   ├── assignment1/
+│   │   ├── assignment2/
+│   │   └── ...
+│   ├── Unity/                           (submodule – third party)
+│   └── ...
+└── build/                               (generated build artifacts)
 
 (Disclosure: The above file tree was generated as markdown text by Claude Code, to simplify formatting)
 ## AI Use
