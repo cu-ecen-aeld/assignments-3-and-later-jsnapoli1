@@ -11,6 +11,13 @@
 *       the assignment autotest submodule at assignment-autotest/test/assignment1/
 *   3) Use unity assertion TEST_ASSERT_EQUAL_STRING_MESSAGE to verify the two strings are equal.  See
 *       the [unity assertion reference](https://github.com/ThrowTheSwitch/Unity/blob/master/docs/UnityAssertionsReference.md)
+*
+* Disclosure: This software was created in collaboration with Claude Code. The above comments are my own, and were used to guide Claude
+* while it aided me in the production of this software.
+* Claude Code Chats:
+*  - https://gist.github.com/jsnapoli1/daef21a674e192b11fa0f5327a074fe8
+*   Note the error that was debugged in the above chat was an artifact of my host system, and I was able to fix it in later iterations.
+*   This change is no longer required, and has been removed.
 */
 void test_validate_my_username()
 {
