@@ -116,3 +116,10 @@ to synchronize after cloning and before starting each assignment, as discussed i
 As a part of the assignment instructions, you will setup your assignment repo to perform automated testing using github actions.  See [this page](https://github.com/cu-ecen-aeld/aesd-assignments/wiki/Setting-up-Github-Actions) for details.
 
 Note that the unit tests will fail on this repository, since assignments are not yet implemented.  That's your job :) 
+
+## Assignment 2 C Writer Notes
+### Architectural Decisions
+- The C implementation uses `open()` with `O_WRONLY | O_CREAT | O_TRUNC` and a `0644` file mode to match the shell script's behavior of overwriting any existing file while allowing the caller to control directory creation. This mirrors standard file creation permissions for user-writable files.
+- Writes are performed via a small `write_all()` helper that loops until all bytes are written, ensuring partial writes from `write()` are handled correctly instead of assuming a single call will write the entire buffer.
+- A `sync()` call was intentionally omitted because system-wide flushes can be unfavorable on large systems with many buffers; a comment in code notes where a per-file `fsync()` would be considered if allowed.
+- Syslog is initialized with `LOG_USER`, emits a `LOG_DEBUG` message before writing, and logs all error paths (argument validation, open/write/sync/close failures) at `LOG_ERR` for parity with the shell script's explicit error conditions.
