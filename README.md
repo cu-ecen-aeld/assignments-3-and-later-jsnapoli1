@@ -134,6 +134,7 @@ Note that the unit tests will fail on this repository, since assignments are not
 - The build step explicitly sets `CROSS_COMPILE=` to force a native compile even if the environment exports a cross prefix; this prevents accidentally using a cross-compiled `writer` that cannot run on the host executing the tests.
 - The test invokes `./writer` instead of the legacy `writer.sh` to ensure the C implementation is what gets validated by the assignment tests.
 - These finder test updates were implemented in commit `80fa474` on 2026-01-23.
+- https://chatgpt.com/s/cd_6973951340208191af369d3a0deb14f1
 
 ## Makefile Line-by-Line Analysis
 The following analysis walks through each line of `finder-app/Makefile` and ties it back to the assignment requirements and behavior.
