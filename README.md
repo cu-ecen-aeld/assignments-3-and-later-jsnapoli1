@@ -129,6 +129,12 @@ Note that the unit tests will fail on this repository, since assignments are not
 - This Makefile was added in commit `d949d24` on 2026-01-23.
 - https://chatgpt.com/s/cd_6973925f9af0819184fc3ae465f7e567
 
+### Finder Test Runner Notes
+- The finder test now calls `make clean` before building to guarantee stale `writer` artifacts are removed and the test always exercises a fresh binary for the current tree state.
+- The build step explicitly sets `CROSS_COMPILE=` to force a native compile even if the environment exports a cross prefix; this prevents accidentally using a cross-compiled `writer` that cannot run on the host executing the tests.
+- The test invokes `./writer` instead of the legacy `writer.sh` to ensure the C implementation is what gets validated by the assignment tests.
+- These finder test updates were implemented in commit `80fa474` on 2026-01-23.
+
 ## Makefile Line-by-Line Analysis
 The following analysis walks through each line of `finder-app/Makefile` and ties it back to the assignment requirements and behavior.
 
