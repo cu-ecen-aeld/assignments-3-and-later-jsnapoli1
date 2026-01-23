@@ -153,3 +153,24 @@ The following analysis walks through each line of `finder-app/Makefile` and ties
 12. `$(CC) $(CFLAGS) -c $< -o $@` compiles a single source file into an object file; `$<` is the source and `$@` is the output object.
 13. `clean:` introduces the cleanup target required by the assignment.
 14. `rm -f $(TARGET) $(OBJS)` removes the writer binary and all object files, using `-f` to avoid errors when files are missing.
+
+## Assignment 2 Build + Cross-Compile Capture (Ubuntu)
+### Build with the Makefile
+From the `finder-app/` directory, run a native build using the default toolchain:
+```
+cd finder-app
+make
+```
+To cross-compile, pass the toolchain prefix via `CROSS_COMPILE`:
+```
+cd finder-app
+make clean
+make CROSS_COMPILE=aarch64-none-linux-gnu-
+```
+
+### Capture the Cross-Compiler Sysroot/Verbose Output
+From the repo root on Ubuntu, run:
+```
+./assignments/assignment2/cross-compile.sh
+```
+This appends both stdout and stderr from `aarch64-none-linux-gnu-gcc -print-sysroot -v` into `assignments/assignment2/cross-compile.txt`.
