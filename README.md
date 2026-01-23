@@ -123,3 +123,6 @@ Note that the unit tests will fail on this repository, since assignments are not
 - Writes are performed via a small `write_all()` helper that loops until all bytes are written, ensuring partial writes from `write()` are handled correctly instead of assuming a single call will write the entire buffer.
 - A `sync()` call was intentionally omitted because system-wide flushes can be unfavorable on large systems with many buffers; a comment in code notes where a per-file `fsync()` would be considered if allowed.
 - Syslog is initialized with `LOG_USER`, emits a `LOG_DEBUG` message before writing, and logs all error paths (argument validation, open/write/sync/close failures) at `LOG_ERR` for parity with the shell script's explicit error conditions.
+- https://chatgpt.com/s/cd_69738c4c6e148191a26aa9b13cc4f84e
+
+
