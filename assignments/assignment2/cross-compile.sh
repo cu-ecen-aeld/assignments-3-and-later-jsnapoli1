@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-output_file="assignments/assignment2/cross-compile.txt"
+output_file="cross-compile.txt"
 
 mkdir -p "$(dirname "$output_file")"
 
