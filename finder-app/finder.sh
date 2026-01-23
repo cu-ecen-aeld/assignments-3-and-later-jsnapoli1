@@ -32,6 +32,7 @@ filesdir=$1
 searchstr=$2
 
 # Check if both arguments are provided
+# if the number of arguments doesn't equal two, print error, exit 1
 if [ $# -ne 2 ]; then
     echo "Error: Two arguments required."
     echo "Usage: finder.sh <filesdir> <searchstr>"
@@ -39,15 +40,19 @@ if [ $# -ne 2 ]; then
 fi
 
 # Check if filesdir is a valid directory
+# if the directory doesn't exist, print error, exit 1
 if [ ! -d "$filesdir" ]; then
     echo "Error: $filesdir is not a directory."
     exit 1
 fi
 
 # Count the number of files in the directory and subdirectories
+# find the number of files (items of type f) in filesdir, and  then count the number of lines with wc
+# save it as a variable numfiles
 num_files=$(find "$filesdir" -type f | wc -l)
 
 # Count the number of matching lines containing searchstr
+# print every time in grep that the searchstr appears, count the number of lines, save variable
 num_matches=$(grep -r "$searchstr" "$filesdir" 2>/dev/null | wc -l)
 
 echo "The number of files are $num_files and the number of matching lines are $num_matches"

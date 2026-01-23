@@ -33,12 +33,16 @@ writefile=$1
 writestr=$2
 
 # Check that both arguments are provided
+# if writefile is zero, or writestr is zero, print the error, exit with error code 1
 if [ -z "$writefile" ] || [ -z "$writestr" ]; then
     echo "Error: Two arguments required: <writefile> <writestr>"
     exit 1
 fi
 
 # Create the directory path if it doesn't exist
+# get the directory path based on the directory name
+# if it is not a directory, make a directory
+# if that process fails, print the error, return 1
 dirpath=$(dirname "$writefile")
 if [ ! -d "$dirpath" ]; then
     mkdir -p "$dirpath"
@@ -49,6 +53,8 @@ if [ ! -d "$dirpath" ]; then
 fi
 
 # Write the content to the file
+# echo in to writefile
+# if that process fails (indicated by return value $? ne 0), print error, return 1
 echo "$writestr" > "$writefile"
 if [ $? -ne 0 ]; then
     echo "Error: Could not write to file $writefile"
