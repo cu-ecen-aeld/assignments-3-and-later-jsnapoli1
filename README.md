@@ -128,3 +128,20 @@ Note that the unit tests will fail on this repository, since assignments are not
 - This Makefile was added in commit `d949d24` on 2026-01-23.
 - https://chatgpt.com/s/cd_69738c4c6e148191a26aa9b13cc4f84e
 
+## Makefile Line-by-Line Analysis
+The following analysis walks through each line of `finder-app/Makefile` and ties it back to the assignment requirements and behavior.
+
+1. `CROSS_COMPILE ?=` defines an optional toolchain prefix and defaults to empty so native builds use the host toolchain when no cross prefix is supplied.
+2. `CC ?= $(CROSS_COMPILE)gcc` selects the compiler based on the prefix; for example, `CROSS_COMPILE=aarch64-none-linux-gnu-` yields `aarch64-none-linux-gnu-gcc`, while an empty prefix yields `gcc`.
+3. `CFLAGS ?= -Wall -Wextra -Werror` sets strict warning flags as the default while still allowing overrides via the command line or environment.
+4. `TARGET := writer` names the output binary for the build.
+5. `SRCS := writer.c` declares the source file list for the target.
+6. `OBJS := $(SRCS:.c=.o)` maps source files to their corresponding object files for compilation and linking.
+7. `.PHONY: all clean` marks `all` and `clean` as phony targets so they always run regardless of file names.
+8. `all: $(TARGET)` sets the default build target so running `make` builds the writer application.
+9. `$(TARGET): $(OBJS)` declares that the final binary depends on the compiled object files.
+10. `$(CC) $(CFLAGS) -o $@ $^` links the binary using the selected compiler and flags; `$@` expands to `writer` and `$^` expands to all object prerequisites.
+11. `%.o: %.c` defines a generic rule for compiling any C source into an object file.
+12. `$(CC) $(CFLAGS) -c $< -o $@` compiles a single source file into an object file; `$<` is the source and `$@` is the output object.
+13. `clean:` introduces the cleanup target required by the assignment.
+14. `rm -f $(TARGET) $(OBJS)` removes the writer binary and all object files, using `-f` to avoid errors when files are missing.
