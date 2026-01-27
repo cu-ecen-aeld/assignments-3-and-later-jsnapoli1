@@ -141,3 +141,10 @@ From the repo root on Ubuntu, run:
 ./assignments/assignment2/cross-compile.sh
 ```
 This appends both stdout and stderr from `aarch64-none-linux-gnu-gcc -print-sysroot -v` into `assignments/assignment2/cross-compile.txt`.
+
+#### Systemcalls Implementation Notes
+- The `do_system` implementation checks `system()`'s status with `WIFEXITED`/`WEXITSTATUS` to treat only a clean `0` exit as success and to flag errors when the shell failed to launch or the command returned non-zero; this mirrors the tests’ success/failure expectations without guessing at shell-specific status conventions.
+- Both `do_exec` and `do_exec_redirect` call `fflush(stdout)` before `fork()` to avoid duplicate buffered output from the parent and child processes when stdout is line-buffered or fully buffered, which can otherwise cause repeated prints.
+- The child process uses `_exit(EXIT_FAILURE)` if `execv()` fails so it does not re-run parent atexit handlers or flush shared stdio buffers, keeping the failure path deterministic.
+- `do_exec_redirect` ignores `outputfile` because the updated assignment requirement requests the same fork/execv/wait flow as `do_exec` without stdout redirection; the `(void)outputfile` cast documents the intentional unused parameter.
+- These systemcalls updates were implemented in commit `dda51894f81506d5962c9ca1ef79cbf802c6f6e2` on 2026-01-27.
