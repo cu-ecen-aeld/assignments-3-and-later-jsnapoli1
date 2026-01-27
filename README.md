@@ -93,3 +93,4 @@ ChatGPT Codex was used to aid in this assignment. All chats, along with Codex's 
 - Both `do_exec` and `do_exec_redirect` call `fflush(stdout)` before `fork()` to avoid duplicate buffered output from the parent and child processes when stdout is line-buffered or fully buffered, which can otherwise cause repeated prints.
 - The child process uses `_exit(EXIT_FAILURE)` if `execv()` fails so it does not re-run parent atexit handlers or flush shared stdio buffers, keeping the failure path deterministic.
 - `do_exec_redirect` opens the output file with `O_WRONLY | O_TRUNC | O_CREAT`, duplicates it onto `STDOUT_FILENO` via `dup2()`, and closes the descriptor in both parent and child so the output redirection mirrors the reference fork/dup2 example (https://stackoverflow.com/a/13784315/1446624).
+- https://chatgpt.com/s/cd_69780eadad308191b776afa22055ff5e
