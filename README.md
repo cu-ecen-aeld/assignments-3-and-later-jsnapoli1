@@ -1,4 +1,4 @@
-# README - ECEN 5713 Assignment 2
+# README - ECEN 5713 Assignment 3
 The purpose of this assignment is to familiarize students with syscalls and how to utilize syscalls to create child processes from parents, as well as open and write to files using various sys flags.
 
 ## Assignment 3 - Linux Syscalls
@@ -44,12 +44,15 @@ assignment-1-jsnapoli1/
 │   ├── assignment.txt                   (supplied by professor)
 │   └── username.txt                     (supplied by professor)
 ├── examples/
-│   └── autotest-validate/
-│       ├── .gitignore                   (supplied by professor)
-│       ├── Makefile                     (supplied by professor)
-│       ├── autotest-validate-main.c     (supplied by professor)
-│       ├── autotest-validate.c          (supplied by professor)
-│       └── autotest-validate.h          (supplied by professor)
+│   ├── autotest-validate/
+│   │   ├── .gitignore                   (supplied by professor)
+│   │   ├── Makefile                     (supplied by professor)
+│   │   ├── autotest-validate-main.c     (supplied by professor)
+│   │   ├── autotest-validate.c          (supplied by professor)
+│   │   └── autotest-validate.h          (supplied by professor)
+│   └── systemcalls/
+│       ├── systemcalls.c                (modified for assignment 3)
+│       └── systemcalls.h                (supplied by professor)
 ├── finder-app/
 │   ├── Makefile                         (created for assignment 2)
 │   ├── finder-test.sh                   (supplied by professor, modified for assignment 2)
@@ -89,4 +92,4 @@ ChatGPT Codex was used to aid in this assignment. All chats, along with Codex's 
 - The `do_system` implementation checks `system()`'s status with `WIFEXITED`/`WEXITSTATUS` to treat only a clean `0` exit as success and to flag errors when the shell failed to launch or the command returned non-zero; this mirrors the tests’ success/failure expectations without guessing at shell-specific status conventions.
 - Both `do_exec` and `do_exec_redirect` call `fflush(stdout)` before `fork()` to avoid duplicate buffered output from the parent and child processes when stdout is line-buffered or fully buffered, which can otherwise cause repeated prints.
 - The child process uses `_exit(EXIT_FAILURE)` if `execv()` fails so it does not re-run parent atexit handlers or flush shared stdio buffers, keeping the failure path deterministic.
-- `do_exec_redirect` opens the output file with `O_WRONLY | O_TRUNC | O_CREAT`, duplicates it onto `STDOUT_FILENO` via `dup2()`, and closes the descriptor in both parent and child so the output redirection mirrors the reference fork/dup2 example.
+- `do_exec_redirect` opens the output file with `O_WRONLY | O_TRUNC | O_CREAT`, duplicates it onto `STDOUT_FILENO` via `dup2()`, and closes the descriptor in both parent and child so the output redirection mirrors the reference fork/dup2 example (https://stackoverflow.com/a/13784315/1446624).
