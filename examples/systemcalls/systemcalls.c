@@ -1,4 +1,5 @@
 #include "systemcalls.h"
+#include <fcntl.h>
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -129,19 +130,31 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
  *
 */
 
-    (void)outputfile;
-
     fflush(stdout);
+    int fd = open(outputfile, O_WRONLY | O_TRUNC | O_CREAT, 0644);
+    if (fd < 0) {
+        va_end(args);
+        return false;
+    }
+
     pid_t pid = fork();
     if (pid < 0) {
+        close(fd);
         va_end(args);
         return false;
     }
 
     if (pid == 0) {
+        if (dup2(fd, STDOUT_FILENO) < 0) {
+            close(fd);
+            _exit(EXIT_FAILURE);
+        }
+        close(fd);
         execv(command[0], command);
         _exit(EXIT_FAILURE);
     }
+
+    close(fd);
 
     int status = 0;
     if (waitpid(pid, &status, 0) < 0) {
