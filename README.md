@@ -1,7 +1,7 @@
 # README - ECEN 5713 Assignment 3
-The purpose of this assignment is to familiarize students with syscalls and how to utilize syscalls to create child processes from parents, as well as open and write to files using various sys flags.
+The purpose of this assignment is to familiarize students with syscalls and how to utilize syscalls to create child processes from parents, as well as open and write to files using various sys flags. Part 2 extends this to building a Linux kernel and root filesystem for QEMU emulation.
 
-## Assignment 3 - Linux Syscalls
+## Assignment 3 Part 1 - Linux Syscalls
 
 ### Procedure:
 - Implement modifications to examples/systemcalls/systemcalls.c
@@ -23,12 +23,33 @@ The purpose of this assignment is to familiarize students with syscalls and how 
 	- Place fflush(stdout) before the call to fork() to avoid duplicate prints
 - Run ./unit-test.sh to test implementation
 
+## Assignment 3 Part 2 - Linux Kernel and Root Filesystem Build
+
+### Procedure:
+- Implement modifications to finder-app/manual-linux.sh
+	- Complete all TODO sections in the script
+	- Build the Linux kernel for ARM64 architecture
+		- Clone Linux kernel repository (v5.15.163)
+		- Configure with defconfig and cross-compile
+	- Create the root filesystem staging directory
+		- Create base directories (bin, dev, etc, home, lib, lib64, proc, sbin, sys, tmp, usr, var)
+	- Build and install BusyBox
+		- Clone BusyBox repository
+		- Configure with defconfig and cross-compile
+		- Install to rootfs
+	- Copy required shared libraries from the cross-compiler sysroot
+		- ld-linux-aarch64.so.1, libc.so.6, libm.so.6, libresolv.so.2
+	- Cross-compile the writer utility and copy finder app files to rootfs
+	- Create initramfs.cpio.gz for QEMU boot
+- Updated .github/workflows/github-actions.yml to add full-test job
+- Run ./full-test.sh to test implementation
+
 ## Repository Structure
 ```
 assignment-1-jsnapoli1/
 ├── .github/
 │   └── workflows/
-│       └── github-actions.yml            (supplied by professor)
+│       └── github-actions.yml            (supplied by professor, modified for assignment 3)
 ├── .gitignore                            (supplied by professor)
 ├── .gitlab-ci.yml                        (supplied by professor)
 ├── .gitmodules                           (supplied by professor)
@@ -57,6 +78,7 @@ assignment-1-jsnapoli1/
 │   ├── Makefile                         (created for assignment 2)
 │   ├── finder-test.sh                   (supplied by professor, modified for assignment 2)
 │   ├── finder.sh                        (created for assignment 1)
+│   ├── manual-linux.sh                  (supplied by professor, modified for assignment 3)
 │   ├── writer.c                         (created for assignment 2)
 │   └── writer.sh                        (created for assignment 1)
 ├── student-test/
@@ -94,3 +116,14 @@ ChatGPT Codex was used to aid in this assignment. All chats, along with Codex's 
 - The child process uses `_exit(EXIT_FAILURE)` if `execv()` fails so it does not re-run parent atexit handlers or flush shared stdio buffers, keeping the failure path deterministic.
 - `do_exec_redirect` opens the output file with `O_WRONLY | O_TRUNC | O_CREAT`, duplicates it onto `STDOUT_FILENO` via `dup2()`, and closes the descriptor in both parent and child so the output redirection mirrors the reference fork/dup2 example (https://stackoverflow.com/a/13784315/1446624).
 - https://chatgpt.com/s/cd_69780eadad308191b776afa22055ff5e
+
+#### Manual Linux Script Implementation Notes
+- Updated kernel repository URL from `linux-stable.git` to `linux.git` and version from v5.1.10 to v5.15.163 per assignment requirements.
+- Added `realpath -m` for OUTDIR to handle relative paths and non-existent directories properly.
+- Kernel build uses `defconfig` for ARM64 architecture with cross-compilation, building in parallel with `-j$(nproc)`.
+- Root filesystem directories are created following standard Linux FHS layout (bin, dev, etc, home, lib, lib64, proc, sbin, sys, tmp, usr/bin, usr/lib, usr/sbin, var, home/conf).
+- BusyBox is configured with `make distclean && make defconfig`, then cross-compiled and installed to rootfs using `CONFIG_PREFIX`.
+- Shared libraries are copied from the cross-compiler sysroot (obtained via `${CROSS_COMPILE}gcc -print-sysroot`) to support dynamic linking on the target.
+- The finder-test.sh script path is modified with `sed` to use `conf/assignment.txt` instead of `../conf/assignment.txt` since the rootfs layout differs from the source tree.
+- The initramfs is created using `find | cpio -H newc -ov --owner root:root` and compressed with gzip for QEMU boot.
+- https://chatgpt.com/s/cd_697a39c38894819197b1dc859f75dca8 
