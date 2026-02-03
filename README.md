@@ -1,48 +1,55 @@
-# README - ECEN 5713 Assignment 2
-The purpose of this assignment is to familiarize students with cross compiling applications for ARM processors when developing on an x86 machine. The assignment prompts the user to convert one of the scripts from Assignment 1 to a .c file, compile it, and run tests. A Makefile was set up to allow users to compile for either the native target or a cross-compiled architecture.
-## Assignment 2 Build + Cross-Compile Capture (Ubuntu)
-### Build with the Makefile
-From the `finder-app/` directory, run a native build using the default toolchain:
-```
-cd finder-app
-make
-```
-To cross-compile, pass the toolchain prefix via `CROSS_COMPILE`:
-```
-cd finder-app
-make clean
-make CROSS_COMPILE=aarch64-none-linux-gnu-
-```
+# README - ECEN 5713 Assignment 3
+The purpose of this assignment is to familiarize students with syscalls and how to utilize syscalls to create child processes from parents, as well as open and write to files using various sys flags. Part 2 extends this to building a Linux kernel and root filesystem for QEMU emulation.
+
+## Assignment 3 Part 1 - Linux Syscalls
+
 ### Procedure:
-- Adapt the writer.sh script from assignment 1 to writer.c, utilizing file IO rather than shell calls.
-	- **Purpose**: Create a new file with name and path *file* and content *string*.
-	- **Arguments**:
-		- file: the path and name of the file
-		- string: the content to be written to the file
-	- **Return Values**:
-		- 1: error. Printed if the file could not be created
-	- The .c file does not need to create a directory if that directory does not exist
-	- Setup syslog logging for the tool with the LOG_USER call
-	- Using syslog, write a message that says "Writing < string > to < file >", where string is the text written, and file is the file created by the script. This should be at the LOG_DEBUG level.
-	- Use syslog to log any unexpected errors at the LOG_ERR level
-- Create a make file including the following:
-	- Default target to build the writer binary
-	- Clean target that removes the writer binary and all .o files
-	- Support for cross compilation with the CROSS_COMPILE flag
-		- When user specifies CROSS_COMPILE aarch64-none-linux-gnu-
-- Update finder-test.sh with the following:
-	- Clean previous build artifacts
-	- Compile the writer for the native architecture
-	- Use the writer binary that was compiled rather than the writer.sh script
-- Create a script that appends the arm toolchain call with the -print-sysroot and -v options, and save this output to a text file.
-	- This file is `assignments/assignment2/cross-compile.txt`
-	- It is created by `assignments/assignment2/cross-compile.sh`
+- Implement modifications to examples/systemcalls/systemcalls.c
+	- Find labeled TODO's
+		- In do_system(), implement the system() call wrapper
+			- Call system() with provided cmd parameter
+			- Return true if command is completed successfully
+			- Return false if there was a failure
+		- In do_exec(), execute a command using fork/execv/wait
+			- Use fork() to create a child process
+			- Use execv() to execute the command
+			- Use command[0] as the full path to the executable
+			- Use the remaining args as the second arg to execv()
+			- Wait for the child process to complete
+			- Return success/failure based on the command's exit status
+		- In do_exec_redirect()
+			- Same changes as do_exec but no stdout redirect
+	- See the provided test code in test/assignment3/Test_systemcalls.c
+	- Place fflush(stdout) before the call to fork() to avoid duplicate prints
+- Run ./unit-test.sh to test implementation
+
+## Assignment 3 Part 2 - Linux Kernel and Root Filesystem Build
+
+### Procedure:
+- Implement modifications to finder-app/manual-linux.sh
+	- Complete all TODO sections in the script
+	- Build the Linux kernel for ARM64 architecture
+		- Clone Linux kernel repository (v5.15.163)
+		- Configure with defconfig and cross-compile
+	- Create the root filesystem staging directory
+		- Create base directories (bin, dev, etc, home, lib, lib64, proc, sbin, sys, tmp, usr, var)
+	- Build and install BusyBox
+		- Clone BusyBox repository
+		- Configure with defconfig and cross-compile
+		- Install to rootfs
+	- Copy required shared libraries from the cross-compiler sysroot
+		- ld-linux-aarch64.so.1, libc.so.6, libm.so.6, libresolv.so.2
+	- Cross-compile the writer utility and copy finder app files to rootfs
+	- Create initramfs.cpio.gz for QEMU boot
+- Updated .github/workflows/github-actions.yml to add full-test job
+- Run ./full-test.sh to test implementation
+
 ## Repository Structure
 ```
 assignment-1-jsnapoli1/
 ├── .github/
 │   └── workflows/
-│       └── github-actions.yml            (supplied by professor)
+│       └── github-actions.yml            (supplied by professor, modified for assignment 3)
 ├── .gitignore                            (supplied by professor)
 ├── .gitlab-ci.yml                        (supplied by professor)
 ├── .gitmodules                           (supplied by professor)
@@ -58,16 +65,20 @@ assignment-1-jsnapoli1/
 │   ├── assignment.txt                   (supplied by professor)
 │   └── username.txt                     (supplied by professor)
 ├── examples/
-│   └── autotest-validate/
-│       ├── .gitignore                   (supplied by professor)
-│       ├── Makefile                     (supplied by professor)
-│       ├── autotest-validate-main.c     (supplied by professor)
-│       ├── autotest-validate.c          (supplied by professor)
-│       └── autotest-validate.h          (supplied by professor)
+│   ├── autotest-validate/
+│   │   ├── .gitignore                   (supplied by professor)
+│   │   ├── Makefile                     (supplied by professor)
+│   │   ├── autotest-validate-main.c     (supplied by professor)
+│   │   ├── autotest-validate.c          (supplied by professor)
+│   │   └── autotest-validate.h          (supplied by professor)
+│   └── systemcalls/
+│       ├── systemcalls.c                (modified for assignment 3)
+│       └── systemcalls.h                (supplied by professor)
 ├── finder-app/
 │   ├── Makefile                         (created for assignment 2)
 │   ├── finder-test.sh                   (supplied by professor, modified for assignment 2)
 │   ├── finder.sh                        (created for assignment 1)
+│   ├── manual-linux.sh                  (supplied by professor, modified for assignment 3)
 │   ├── writer.c                         (created for assignment 2)
 │   └── writer.sh                        (created for assignment 1)
 ├── student-test/
@@ -96,48 +107,23 @@ assignment-1-jsnapoli1/
 ## AI Use
 
 ChatGPT Codex was used to aid in this assignment. All chats, along with Codex's implementation notes can be found below:
-### Assignment 2 C Writer Notes
-#### writer.c Implementation Notes
-- The C implementation uses `open()` with `O_WRONLY | O_CREAT | O_TRUNC` and a `0644` file mode to match the shell script's behavior of overwriting any existing file while allowing the caller to control directory creation. This mirrors standard file creation permissions for user-writable files.
-- Writes are performed via a small `write_all()` helper that loops until all bytes are written, ensuring partial writes from `write()` are handled correctly instead of assuming a single call will write the entire buffer.
-- A `sync()` call was intentionally omitted because system-wide flushes can be unfavorable on large systems with many buffers; a comment in code notes where a per-file `fsync()` would be considered if allowed.
-- Syslog is initialized with `LOG_USER`, emits a `LOG_DEBUG` message before writing, and logs all error paths (argument validation, open/write/sync/close failures) at `LOG_ERR` for parity with the shell script's explicit error conditions.
-- https://chatgpt.com/s/cd_69738c4c6e148191a26aa9b13cc4f84e
 
-#### Makefile Implementation Notes
-- The `finder-app/Makefile` defines `CROSS_COMPILE ?=` and `CC ?= $(CROSS_COMPILE)gcc` so that setting `CROSS_COMPILE=aarch64-none-linux-gnu-` swaps in the cross compiler while leaving native builds unchanged. `CFLAGS ?= -Wall -Wextra -Werror` enables warning coverage and treats warnings as errors to prevent silent issues in the small utility; the `?=` operator allows callers to override these defaults without editing the file.
-- Object files are derived from `SRCS` via `OBJS := $(SRCS:.c=.o)` for straightforward source/object mapping, and `clean` removes both the `writer` binary and any `.o` files via `rm -f` to avoid errors when files are missing.
+### Assignment 3 Implementation Notes
 
-The following analysis walks through each line of `finder-app/Makefile` and ties it back to the assignment requirements and behavior.
+#### Systemcalls Implementation Notes
+- The `do_system` implementation checks `system()`'s status with `WIFEXITED`/`WEXITSTATUS` to treat only a clean `0` exit as success and to flag errors when the shell failed to launch or the command returned non-zero; this mirrors the tests’ success/failure expectations without guessing at shell-specific status conventions.
+- Both `do_exec` and `do_exec_redirect` call `fflush(stdout)` before `fork()` to avoid duplicate buffered output from the parent and child processes when stdout is line-buffered or fully buffered, which can otherwise cause repeated prints.
+- The child process uses `_exit(EXIT_FAILURE)` if `execv()` fails so it does not re-run parent atexit handlers or flush shared stdio buffers, keeping the failure path deterministic.
+- `do_exec_redirect` opens the output file with `O_WRONLY | O_TRUNC | O_CREAT`, duplicates it onto `STDOUT_FILENO` via `dup2()`, and closes the descriptor in both parent and child so the output redirection mirrors the reference fork/dup2 example (https://stackoverflow.com/a/13784315/1446624).
+- https://chatgpt.com/s/cd_69780eadad308191b776afa22055ff5e
 
-1. `CROSS_COMPILE ?=` defines an optional toolchain prefix and defaults to empty so native builds use the host toolchain when no cross prefix is supplied.
-2. `CC ?= $(CROSS_COMPILE)gcc` selects the compiler based on the prefix; for example, `CROSS_COMPILE=aarch64-none-linux-gnu-` yields `aarch64-none-linux-gnu-gcc`, while an empty prefix yields `gcc`.
-3. `CFLAGS ?= -Wall -Wextra -Werror` sets strict warning flags as the default while still allowing overrides via the command line or environment.
-4. `TARGET := writer` names the output binary for the build.
-5. `SRCS := writer.c` declares the source file list for the target.
-6. `OBJS := $(SRCS:.c=.o)` maps source files to their corresponding object files for compilation and linking.
-7. `.PHONY: all clean` marks `all` and `clean` as phony targets so they always run regardless of file names.
-8. `all: $(TARGET)` sets the default build target so running `make` builds the writer application.
-9. `$(TARGET): $(OBJS)` declares that the final binary depends on the compiled object files.
-10. `$(CC) $(CFLAGS) -o $@ $^` links the binary using the selected compiler and flags; `$@` expands to `writer` and `$^` expands to all object prerequisites.
-11. `%.o: %.c` defines a generic rule for compiling any C source into an object file.
-12. `$(CC) $(CFLAGS) -c $< -o $@` compiles a single source file into an object file; `$<` is the source and `$@` is the output object.
-13. `clean:` introduces the cleanup target required by the assignment.
-14. `rm -f $(TARGET) $(OBJS)` removes the writer binary and all object files, using `-f` to avoid errors when files are missing.
-
-- This Makefile was added in commit `d949d24` on 2026-01-23.
-- https://chatgpt.com/s/cd_6973925f9af0819184fc3ae465f7e567
-
-#### Finder Test Implementation Notes
-- The finder test now calls `make clean` before building to guarantee stale `writer` artifacts are removed and the test always exercises a fresh binary for the current tree state.
-- The build step explicitly sets `CROSS_COMPILE=` to force a native compile even if the environment exports a cross prefix; this prevents accidentally using a cross-compiled `writer` that cannot run on the host executing the tests.
-- The test invokes `./writer` instead of the legacy `writer.sh` to ensure the C implementation is what gets validated by the assignment tests.
-- These finder test updates were implemented in commit `80fa474` on 2026-01-23.
-- https://chatgpt.com/s/cd_6973951340208191af369d3a0deb14f1
-
-#### Capture the Cross-Compiler Sysroot/Verbose Output
-From the repo root on Ubuntu, run:
-```
-./assignments/assignment2/cross-compile.sh
-```
-This appends both stdout and stderr from `aarch64-none-linux-gnu-gcc -print-sysroot -v` into `assignments/assignment2/cross-compile.txt`.
+#### Manual Linux Script Implementation Notes
+- Updated kernel repository URL from `linux-stable.git` to `linux.git` and version from v5.1.10 to v5.15.163 per assignment requirements.
+- Added `realpath -m` for OUTDIR to handle relative paths and non-existent directories properly.
+- Kernel build uses `defconfig` for ARM64 architecture with cross-compilation, building in parallel with `-j$(nproc)`.
+- Root filesystem directories are created following standard Linux FHS layout (bin, dev, etc, home, lib, lib64, proc, sbin, sys, tmp, usr/bin, usr/lib, usr/sbin, var, home/conf).
+- BusyBox is configured with `make distclean && make defconfig`, then cross-compiled and installed to rootfs using `CONFIG_PREFIX`.
+- Shared libraries are copied from the cross-compiler sysroot (obtained via `${CROSS_COMPILE}gcc -print-sysroot`) to support dynamic linking on the target.
+- The finder-test.sh script path is modified with `sed` to use `conf/assignment.txt` instead of `../conf/assignment.txt` since the rootfs layout differs from the source tree.
+- The initramfs is created using `find | cpio -H newc -ov --owner root:root` and compressed with gzip for QEMU boot.
+- https://chatgpt.com/s/cd_697a39c38894819197b1dc859f75dca8 
