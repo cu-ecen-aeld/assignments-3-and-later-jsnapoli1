@@ -1,5 +1,5 @@
-# README - ECEN 5713 Assignment 3
-The purpose of this assignment is to familiarize students with syscalls and how to utilize syscalls to create child processes from parents, as well as open and write to files using various sys flags. Part 2 extends this to building a Linux kernel and root filesystem for QEMU emulation.
+# README - ECEN 5713 Assignments 3 and 4
+This repository includes prior Assignment 3 work and Assignment 4 Part 1 threading updates. Assignment 4 focuses on POSIX thread synchronization, dynamic thread argument ownership, and completion-status reporting for joinable worker threads.
 
 ## Assignment 3 Part 1 - Linux Syscalls
 
@@ -46,15 +46,41 @@ The purpose of this assignment is to familiarize students with syscalls and how 
 
 ## Assignment 4 Part 1 - Threading
 
+### Procedure:
+- Implement modifications to `examples/threading/threading.c` and `examples/threading/threading.h`
+  - Find labeled TODOs
+    - In `struct thread_data`, add required thread configuration fields
+      - `wait_to_obtain_ms`
+      - `wait_to_release_ms`
+      - mutex used by the thread
+      - `thread_complete_success` status flag
+    - In `threadfunc`
+      - Cast the input argument using `struct thread_data* thread_func_args = (struct thread_data *) thread_param;`
+      - Sleep for `wait_to_obtain_ms` milliseconds
+      - Lock the provided mutex
+      - Sleep for `wait_to_release_ms` milliseconds while holding the mutex
+      - Unlock the mutex
+      - Set `thread_complete_success` true only on successful completion
+      - Return the thread-data pointer for the joiner to inspect/free
+    - In `start_thread_obtaining_mutex`
+      - Dynamically allocate `thread_data` on the heap
+      - Populate wait times, mutex pointer, and default completion status
+      - Start a thread with `pthread_create` using `threadfunc`
+      - Return `true` when thread startup succeeds and `false` on failure
+      - Do not block for completion (join should happen elsewhere)
+- Added `plan-assignment4-part1.md` for implementation planning and sequencing
+- Added `code-review-assignment4-part1.md` documenting pseudocode blocks, rationale, and architectural decisions
+
 ### Work Summary (with commit hashes and dates)
-- 059de7a (2026-01-31): Added the `thread_data` fields and implemented `threadfunc` with sleep/lock/unlock sequencing and success reporting.
-- d8a4f14 (2026-01-31): Implemented `start_thread_obtaining_mutex` with heap allocation, thread creation, and error handling.
-- d54968b (2026-01-31): Added plan and code-review documentation describing the threading approach and rationale.
+- 059de7a (2026-01-31): Added `thread_data` fields and implemented `threadfunc` sleep/lock/unlock flow with completion reporting
+- d8a4f14 (2026-01-31): Implemented `start_thread_obtaining_mutex` with dynamic allocation and `pthread_create` error handling
+- d54968b (2026-01-31): Added Assignment 4 plan and code-review documentation
+- 41c512a (2026-01-31): Updated README with Assignment 4 summary and architecture notes
 
 ### Architectural Notes
-- `thread_data` is the single ownership/communication contract between the thread creator and the thread itself, enabling safe heap allocation and return-by-pointer cleanup.
-- `threadfunc` uses a clear lock-hold-unlock lifecycle and only marks success after a clean unlock to enforce correctness.
-- `start_thread_obtaining_mutex` returns immediately after thread creation, keeping concurrency scalable while deferring ownership cleanup to the joiner.
+- `thread_data` serves as the ownership and communication contract between creator and worker thread; the worker returns this pointer on exit for join-time cleanup
+- `start_thread_obtaining_mutex` is intentionally non-blocking to allow concurrent thread creation and scheduling
+- `thread_complete_success` is initialized false and only promoted to true after successful lock/sleep/unlock sequence
 
 ## Repository Structure
 ```
