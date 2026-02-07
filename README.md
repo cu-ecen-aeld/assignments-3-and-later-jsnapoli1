@@ -44,6 +44,18 @@ The purpose of this assignment is to familiarize students with syscalls and how 
 - Updated .github/workflows/github-actions.yml to add full-test job
 - Run ./full-test.sh to test implementation
 
+## Assignment 4 Part 1 - Threading
+
+### Work Summary (with commit hashes and dates)
+- 059de7a (2026-01-31): Added the `thread_data` fields and implemented `threadfunc` with sleep/lock/unlock sequencing and success reporting.
+- d8a4f14 (2026-01-31): Implemented `start_thread_obtaining_mutex` with heap allocation, thread creation, and error handling.
+- d54968b (2026-01-31): Added plan and code-review documentation describing the threading approach and rationale.
+
+### Architectural Notes
+- `thread_data` is the single ownership/communication contract between the thread creator and the thread itself, enabling safe heap allocation and return-by-pointer cleanup.
+- `threadfunc` uses a clear lock-hold-unlock lifecycle and only marks success after a clean unlock to enforce correctness.
+- `start_thread_obtaining_mutex` returns immediately after thread creation, keeping concurrency scalable while deferring ownership cleanup to the joiner.
+
 ## Repository Structure
 ```
 assignment-1-jsnapoli1/
