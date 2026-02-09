@@ -1,0 +1,23 @@
+#!/bin/sh
+
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+DAEMON="$SCRIPT_DIR/aesdsocket"
+
+case "$1" in
+    start)
+        start-stop-daemon --start --exec "$DAEMON" -- -d
+        ;;
+    stop)
+        start-stop-daemon --stop --signal TERM --name aesdsocket --retry 5
+        ;;
+    restart)
+        "$0" stop
+        "$0" start
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart}" >&2
+        exit 1
+        ;;
+esac
+
+exit 0
