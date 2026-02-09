@@ -165,3 +165,30 @@ ChatGPT Codex was used to aid in this assignment. All chats, along with Codex's 
 - The finder-test.sh script path is modified with `sed` to use `conf/assignment.txt` instead of `../conf/assignment.txt` since the rootfs layout differs from the source tree.
 - The initramfs is created using `find | cpio -H newc -ov --owner root:root` and compressed with gzip for QEMU boot.
 - https://chatgpt.com/s/cd_697a39c38894819197b1dc859f75dca8 
+
+## Assignment 5 Part 1 - Socket Server (`aesdsocket`)
+
+### Procedure:
+- Added `server/aesdsocket.c` implementing a TCP server on port `9000`
+  - Supports foreground mode and daemon mode via `-d`
+  - Handles `SIGINT`/`SIGTERM` for graceful shutdown and cleanup
+  - Logs accepted and closed connections using syslog with client IP addresses
+  - Appends newline-terminated packets to `/var/tmp/aesdsocketdata`
+  - Sends full file contents back to client after each complete packet
+  - Removes `/var/tmp/aesdsocketdata` at graceful exit
+- Added `server/Makefile`
+  - Supports `default` and `all` targets
+  - Supports cross-compilation with `CROSS_COMPILE`
+- Added `server/aesdsocket-start-stop`
+  - Uses `start-stop-daemon` to start `aesdsocket` with `-d`
+  - Uses `SIGTERM` on stop for graceful cleanup
+- Added `plan-assignment5-part1.md` implementation plan
+- Added `code-review-assignment5-part1.md` with pseudocode block rationale and architectural review
+
+### Work Summary (with commit hashes and dates)
+- 1e0d1e6 (2026-02-09): Implemented Assignment 5 Part 1 server deliverables (`aesdsocket`, Makefile, startup script, planning and code-review docs)
+
+### Architectural Notes
+- Connection handling is intentionally synchronous and single-client-at-a-time to prioritize deterministic correctness for assignment packet semantics.
+- Packet completion is defined by newline detection in a stream-oriented TCP channel, requiring explicit buffering and carryover across `recv()` boundaries.
+- File readback is chunked to avoid assumptions about in-memory file sizing.
