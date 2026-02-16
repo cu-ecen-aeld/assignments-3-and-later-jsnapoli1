@@ -1,4 +1,4 @@
-# README - ECEN 5713 Assignments 3 and 4
+# README - ECEN 5713 Assignments 3, 4, and 5
 This repository includes prior Assignment 3 work and Assignment 4 Part 1 threading updates. Assignment 4 focuses on POSIX thread synchronization, dynamic thread argument ownership, and completion-status reporting for joinable worker threads.
 
 ## Assignment 3 Part 1 - Linux Syscalls
