@@ -38,7 +38,6 @@ SLIST_HEAD(thread_list, thread_entry) thread_head = SLIST_HEAD_INITIALIZER(threa
 
 static pthread_mutex_t data_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-/* Signal handler: just set flag */
 static void signal_handler(int signo)
 {
     caught_signal = signo;
@@ -54,24 +53,24 @@ static void cleanup(void)
 
 static int send_file_contents(int client_fd)
 {
-    FILE *fp = fopen(DATA_FILE, "r");
-    if (!fp)
+    int fd = open(DATA_FILE, O_RDONLY);
+    if (fd < 0)
         return -1;
 
     char buf[BUF_SIZE];
-    size_t nread;
-    while ((nread = fread(buf, 1, sizeof(buf), fp)) > 0) {
-        size_t total_sent = 0;
+    ssize_t nread;
+    while ((nread = read(fd, buf, sizeof(buf))) > 0) {
+        ssize_t total_sent = 0;
         while (total_sent < nread) {
             ssize_t sent = send(client_fd, buf + total_sent, nread - total_sent, 0);
             if (sent <= 0) {
-                fclose(fp);
+                close(fd);
                 return -1;
             }
             total_sent += sent;
         }
     }
-    fclose(fp);
+    close(fd);
     return 0;
 }
 
@@ -105,10 +104,14 @@ static void *connection_thread(void *arg)
 
                 pthread_mutex_lock(&data_mutex);
 
-                FILE *fp = fopen(DATA_FILE, "a");
-                if (fp) {
-                    fwrite(line_buf, 1, line_len, fp);
-                    fclose(fp);
+                /* Use file descriptor with O_APPEND to ensure atomicity */
+                int fd = open(DATA_FILE, O_WRONLY | O_CREAT | O_APPEND, 0644);
+                if (fd >= 0) {
+                    ssize_t written = write(fd, line_buf, line_len);
+                    if (written < 0) {
+                        syslog(LOG_ERR, "write failed: %s", strerror(errno));
+                    }
+                    close(fd);
                 }
 
                 send_file_contents(client_fd);
@@ -158,10 +161,10 @@ static void *timer_thread(void *arg)
                  "timestamp:%a, %d %b %Y %H:%M:%S %z\n", &tm_info);
 
         pthread_mutex_lock(&data_mutex);
-        FILE *f = fopen(DATA_FILE, "a");
-        if (f) {
-            fputs(timebuf, f);
-            fclose(f);
+        int fd = open(DATA_FILE, O_WRONLY | O_CREAT | O_APPEND, 0644);
+        if (fd >= 0) {
+            write(fd, timebuf, strlen(timebuf));
+            close(fd);
         }
         pthread_mutex_unlock(&data_mutex);
     }
@@ -233,12 +236,10 @@ int main(int argc, char *argv[])
     pthread_t timer_tid;
     pthread_create(&timer_tid, NULL, timer_thread, NULL);
 
-    /* Accept loop: don't break until caught_signal AND no pending accepts */
     while (1) {
         struct sockaddr_in client_addr;
         socklen_t client_len = sizeof(client_addr);
 
-        /* If signal caught, set socket to non-blocking to drain any pending */
         if (caught_signal) {
             int flags = fcntl(server_fd, F_GETFL, 0);
             fcntl(server_fd, F_SETFL, flags | O_NONBLOCK);
@@ -248,7 +249,6 @@ int main(int argc, char *argv[])
         
         if (client_fd < 0) {
             if (caught_signal) {
-                /* If signal caught and no more pending connections, exit */
                 if (errno == EWOULDBLOCK || errno == EAGAIN)
                     break;
             }
@@ -274,7 +274,6 @@ int main(int argc, char *argv[])
         SLIST_INSERT_HEAD(&thread_head, entry, entries);
         pthread_create(&entry->tid, NULL, connection_thread, entry);
 
-        /* Reap completed threads */
         struct thread_entry *e = SLIST_FIRST(&thread_head);
         while (e != NULL) {
             struct thread_entry *next = SLIST_NEXT(e, entries);
@@ -296,7 +295,6 @@ int main(int argc, char *argv[])
 
     pthread_join(timer_tid, NULL);
 
-    /* Join all remaining connection threads - they should complete their work */
     while (!SLIST_EMPTY(&thread_head)) {
         struct thread_entry *e = SLIST_FIRST(&thread_head);
         pthread_join(e->tid, NULL);
