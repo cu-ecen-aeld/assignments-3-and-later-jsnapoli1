@@ -157,13 +157,10 @@ done:
 static void *timer_thread(void *arg)
 {
     (void)arg;
+    struct timespec ts = {10, 0};
 
     while (!caught_signal) {
-        /* Sleep in 1-second intervals so we exit quickly on signal */
-        for (int i = 0; i < 10 && !caught_signal; i++) {
-            struct timespec ts = {1, 0};
-            clock_nanosleep(CLOCK_MONOTONIC, 0, &ts, NULL);
-        }
+        clock_nanosleep(CLOCK_MONOTONIC, 0, &ts, NULL);
         if (caught_signal)
             break;
 
@@ -307,6 +304,7 @@ int main(int argc, char *argv[])
         server_fd = -1;
     }
 
+    pthread_cancel(timer_tid);
     pthread_join(timer_tid, NULL);
 
     while (!SLIST_EMPTY(&thread_head)) {
