@@ -111,6 +111,7 @@ static void *connection_thread(void *arg)
                     if (written < 0) {
                         syslog(LOG_ERR, "write failed: %s", strerror(errno));
                     }
+                    fsync(fd);
                     close(fd);
                 }
 
