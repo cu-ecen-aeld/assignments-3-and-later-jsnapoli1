@@ -223,3 +223,6 @@ https://chatgpt.com/s/cd_69928bd33cd08191b96f84d44d193c80
 - 7bcfc73 (2026-02-16): Fixed premature shutdown behavior during signal handling
 - bd0544b (2026-02-16): Additional shutdown fix refinement for signal-path robustness
 - 31c9005 (2026-02-16): Replaced `FILE*` append flow with fd-based `O_APPEND` writes for safer atomic append behavior
+
+### Codex Link
+https://chatgpt.com/s/cd_699bb218734c8191bc97e6d02c6bb948
