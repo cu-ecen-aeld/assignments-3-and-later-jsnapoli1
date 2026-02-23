@@ -1,5 +1,5 @@
-# README - ECEN 5713 Assignments 3, 4, and 5
-This repository includes prior Assignment 3 work and Assignment 4 Part 1 threading updates. Assignment 4 focuses on POSIX thread synchronization, dynamic thread argument ownership, and completion-status reporting for joinable worker threads.
+# README - ECEN 5713 Assignments 3, 4, 5, and 6
+This repository includes prior Assignment 3 work, Assignment 4 Part 1 threading updates, Assignment 5 Part 1 socket-server deliverables, and Assignment 6 Part 1 multi-threaded socket-server extensions.
 
 ## Assignment 3 Part 1 - Linux Syscalls
 
@@ -195,3 +195,31 @@ ChatGPT Codex was used to aid in this assignment. All chats, along with Codex's 
 
 ### Codex Link
 https://chatgpt.com/s/cd_69928bd33cd08191b96f84d44d193c80
+
+## Assignment 6 Part 1 - Multi-Threaded Socket Server (`aesdsocket`)
+
+### Changes Introduced Since `c83d2424fa4ef5b9171c238d3b2ed315e0781625`
+- Updated `server/aesdsocket.c` from single-thread connection handling to a multi-threaded design
+  - Adds one `pthread` per accepted client connection and tracks active workers in an `SLIST`
+  - Adds a dedicated timer thread which appends `timestamp:` records every 10 seconds
+  - Protects all file read/write operations with a `pthread_mutex_t` to serialize access
+  - Improves shutdown behavior by avoiding premature server termination during signal handling
+  - Switches append path to file descriptor writes (`open`/`write` with `O_APPEND`) for safer append semantics
+- Updated `server/Makefile`
+  - Adds `-pthread` link support required by the new threading implementation
+- Updated CI/test configuration for Assignment 6
+  - `.github/workflows/github-actions.yml` now uses `cuaesd/aesd-autotest:24-assignment6`
+  - `conf/assignment.txt` updated from `assignment5` to `assignment6`
+- Updated `.gitignore`
+  - Ignores local `aesdsocket` binaries and `server/valgrind-out.txt`
+- Added Assignment 6 documentation artifacts
+  - `server/plan-assignment6-part1.md`
+  - `server/code-review-assignment6-part1.md`
+
+### Work Summary (with commit hashes and dates)
+- 965ad76 (2026-02-16): Added Assignment 6 implementation plan and architecture pseudocode
+- 6f59698 (2026-02-16): Implemented multi-threaded `aesdsocket` with per-connection workers, mutexed file access, and timer thread
+- 20eebdc (2026-02-16): Added Assignment 6 code-review documentation
+- 7bcfc73 (2026-02-16): Fixed premature shutdown behavior during signal handling
+- bd0544b (2026-02-16): Additional shutdown fix refinement for signal-path robustness
+- 31c9005 (2026-02-16): Replaced `FILE*` append flow with fd-based `O_APPEND` writes for safer atomic append behavior
