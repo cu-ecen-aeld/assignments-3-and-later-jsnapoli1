@@ -107,21 +107,16 @@ static void *connection_thread(void *arg)
                 /* Use file descriptor with O_APPEND to ensure atomicity */
                 int fd = open(DATA_FILE, O_WRONLY | O_CREAT | O_APPEND, 0644);
                 if (fd >= 0) {
-                    size_t total_written = 0;
-                    while (total_written < line_len) {
-                        ssize_t written = write(fd, line_buf + total_written, line_len - total_written);
-                        if (written < 0) {
-                            syslog(LOG_ERR, "write failed: %s", strerror(errno));
-                            break;
-                        }
-                        total_written += written;
+                    ssize_t written = write(fd, line_buf, line_len);
+                    if (written < 0) {
+                        syslog(LOG_ERR, "write failed: %s", strerror(errno));
                     }
                     close(fd);
                 }
 
-                pthread_mutex_unlock(&data_mutex);
-
                 send_file_contents(client_fd);
+
+                pthread_mutex_unlock(&data_mutex);
 
                 free(line_buf);
                 line_buf = NULL;
