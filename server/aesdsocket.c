@@ -111,10 +111,16 @@ static void *connection_thread(void *arg)
                     while (total_written < line_len) {
                         ssize_t written = write(fd, line_buf + total_written, line_len - total_written);
                         if (written < 0) {
+                            if (errno == EINTR) {
+                                continue;
+                            }
                             syslog(LOG_ERR, "write failed: %s", strerror(errno));
                             break;
                         }
                         total_written += written;
+                    }
+                    if (total_written != line_len) {
+                        syslog(LOG_ERR, "incomplete write: %zu/%zu bytes", total_written, line_len);
                     }
                     close(fd);
                 }
