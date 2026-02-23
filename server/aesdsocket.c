@@ -116,7 +116,6 @@ static void *connection_thread(void *arg)
                         }
                         total_written += written;
                     }
-                    fsync(fd);
                     close(fd);
                 }
 
