@@ -125,9 +125,9 @@ static void *connection_thread(void *arg)
                     close(fd);
                 }
 
-                pthread_mutex_unlock(&data_mutex);
-
                 send_file_contents(client_fd);
+
+                pthread_mutex_unlock(&data_mutex);
 
                 free(line_buf);
                 line_buf = NULL;
