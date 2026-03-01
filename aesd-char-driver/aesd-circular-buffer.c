@@ -45,8 +45,29 @@ struct aesd_buffer_entry *aesd_circular_buffer_find_entry_offset_for_fpos(struct
 void aesd_circular_buffer_add_entry(struct aesd_circular_buffer *buffer, const struct aesd_buffer_entry *add_entry)
 {
     /**
-    * TODO: implement per description
-    */
+     * Pseudocode:
+     *   1. Write the new entry into the slot at in_offs (shallow copy of
+     *      buffptr pointer and size — caller owns the underlying memory)
+     *   2. If buffer was already full before this write, the oldest entry
+     *      at out_offs was just overwritten, so advance out_offs by one
+     *      (wrapping around with modulo)
+     *   3. Advance in_offs to the next slot (wrapping around with modulo)
+     *   4. If in_offs now equals out_offs, the buffer has become full
+     */
+
+    /* Step 1: copy the entry into the current write slot */
+    buffer->entry[buffer->in_offs] = *add_entry;
+
+    /* Step 2: if full, oldest entry was overwritten — advance the read pointer */
+    if (buffer->full) {
+        buffer->out_offs = (buffer->out_offs + 1) % AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED;
+    }
+
+    /* Step 3: advance the write pointer to the next slot */
+    buffer->in_offs = (buffer->in_offs + 1) % AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED;
+
+    /* Step 4: detect whether the buffer is now full (write caught up to read) */
+    buffer->full = (buffer->in_offs == buffer->out_offs);
 }
 
 /**
