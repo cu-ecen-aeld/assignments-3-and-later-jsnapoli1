@@ -54,5 +54,14 @@ void aesd_circular_buffer_add_entry(struct aesd_circular_buffer *buffer, const s
 */
 void aesd_circular_buffer_init(struct aesd_circular_buffer *buffer)
 {
-    memset(buffer,0,sizeof(struct aesd_circular_buffer));
+    /**
+     * Pseudocode:
+     *   Zero out the entire buffer struct so that:
+     *     - All entry[].buffptr pointers become NULL
+     *     - All entry[].size values become 0
+     *     - in_offs = 0  (next write goes to slot 0)
+     *     - out_offs = 0 (next read comes from slot 0)
+     *     - full = false (buffer starts empty)
+     */
+    memset(buffer, 0, sizeof(struct aesd_circular_buffer));
 }
