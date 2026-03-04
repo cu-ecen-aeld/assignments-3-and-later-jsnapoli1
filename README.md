@@ -1,5 +1,5 @@
-# README - ECEN 5713 Assignments 3, 4, 5, and 6
-This repository includes prior Assignment 3 work, Assignment 4 Part 1 threading updates, Assignment 5 Part 1 socket-server deliverables, and Assignment 6 Part 1 multi-threaded socket-server extensions.
+# README - ECEN 5713 Assignments 3, 4, 5, 6, and 7
+This repository includes prior Assignment 3 work, Assignment 4 Part 1 threading updates, Assignment 5 Part 1 socket-server deliverables, Assignment 6 Part 1 multi-threaded socket-server extensions, and Assignment 8 circular buffer implementation.
 
 ## Assignment 3 Part 1 - Linux Syscalls
 
@@ -226,3 +226,48 @@ https://chatgpt.com/s/cd_69928bd33cd08191b96f84d44d193c80
 
 ### Codex Link
 https://chatgpt.com/s/cd_699bb218734c8191bc97e6d02c6bb948
+
+## Assignment 7 - Circular Buffer Implementation
+
+### Summary
+
+Implemented a circular (ring) buffer in `aesd-char-driver/aesd-circular-buffer.c` for use in the AESD character driver. The buffer stores up to 10 entries (`AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED`) and supports initialization, entry addition with automatic oldest-entry eviction, and byte-offset lookup across all concatenated entries.
+
+### Circular Buffer Architecture
+
+- **Buffer size**: Fixed at 10 slots (`AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED`), each holding a `const char *` pointer and a `size_t` length
+- **Offset tracking**: Two `uint8_t` indices — `in_offs` (next write position) and `out_offs` (oldest entry / next read position) — wrap via modular arithmetic (`% 10`)
+- **Full/empty disambiguation**: A `bool full` flag resolves the ambiguity when `in_offs == out_offs`: if `full` is true the buffer holds 10 entries; if false it is empty. This avoids wasting a slot or maintaining a separate counter
+- **Byte-offset search**: `find_entry_offset_for_fpos` treats all entries as a single concatenated byte stream, walking from `out_offs` and subtracting each entry's size until the target byte is located
+
+### Key Design Decisions
+
+- **Memory ownership**: The buffer stores pointers, not copies. The caller allocates and frees the underlying data. This keeps the buffer allocator-agnostic and avoids kernel-vs-userspace allocation divergence
+- **Locking responsibility**: No synchronization primitives are embedded in the buffer. The caller must provide appropriate locking (spinlock in interrupt context, mutex in process context, nothing in single-threaded tests)
+- **Kernel/userspace duality**: The `#ifdef __KERNEL__` guard selects between `<linux/string.h>` and `<string.h>` for `memset`. All implementation code uses only standard C constructs, enabling the same source to compile as a kernel module and as a userspace unit-test target
+- **Shallow struct copy**: `add_entry` uses C struct assignment (`buffer->entry[in_offs] = *add_entry`) rather than `memcpy`, which is both more readable and allows the compiler to optimize for the known struct layout
+
+### Work Summary (with commit hashes and dates)
+
+- 1b94903 (2026-03-01): Merged `assignments-base/assignment7` branch to bring in `aesd-char-driver/` skeleton
+- c06ac96 (2026-03-01): Added implementation plan (`plan-circular-buffer.md`)
+- 5e6c0b4 (2026-03-01): Implemented `aesd_circular_buffer_init` (Block 1) — memset zero-initialization
+- 0bc5bc9 (2026-03-01): Implemented `aesd_circular_buffer_add_entry` (Block 2) — write, evict, advance
+- f30e7d9 (2026-03-01): Implemented `aesd_circular_buffer_find_entry_offset_for_fpos` (Block 3) — byte-offset search
+- 3b652fd (2026-03-01): Verified unit tests pass for circular buffer
+- 65d38b5 (2026-03-01): Added code review documentation (`code-review-circular-buffer.md`)
+
+### How to Run Tests
+
+```bash
+# Unit tests only (builds and runs assignment-autotest binary)
+./unit-test.sh
+
+# Full assignment validation (unit tests + assignment-specific checks)
+./full-test.sh
+```
+
+Both scripts build via CMake in a `build/` subdirectory and run the Unity-based test runner. The circular buffer tests are in `assignment-autotest/test/assignment7/Test_circular_buffer.c`.
+
+### AI Use
+Claude Code was used to assist with this assignment.
