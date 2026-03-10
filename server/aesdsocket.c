@@ -19,10 +19,19 @@
 #include <time.h>
 #include <stdbool.h>
 
+#ifndef USE_AESD_CHAR_DEVICE
+#define USE_AESD_CHAR_DEVICE 1
+#endif
+
 #define PORT 9000
 #define BACKLOG 10
 #define BUF_SIZE 1024
+
+#if USE_AESD_CHAR_DEVICE
+#define DATA_FILE "/dev/aesdchar"
+#else
 #define DATA_FILE "/var/tmp/aesdsocketdata"
+#endif
 
 static int server_fd = -1;
 static volatile sig_atomic_t caught_signal = 0;
@@ -47,10 +56,13 @@ static void cleanup(void)
 {
     if (server_fd >= 0)
         close(server_fd);
+#if !USE_AESD_CHAR_DEVICE
     remove(DATA_FILE);
+#endif
     closelog();
 }
 
+/* Send all contents of DATA_FILE to the client */
 static int send_file_contents(int client_fd)
 {
     int fd = open(DATA_FILE, O_RDONLY);
@@ -74,6 +86,7 @@ static int send_file_contents(int client_fd)
     return 0;
 }
 
+/* Handle a single client connection: receive data, write to file, send back */
 static void *connection_thread(void *arg)
 {
     struct thread_entry *entry = (struct thread_entry *)arg;
@@ -104,7 +117,7 @@ static void *connection_thread(void *arg)
 
                 pthread_mutex_lock(&data_mutex);
 
-                /* Use file descriptor with O_APPEND to ensure atomicity */
+                /* Open fd, write, close — do not hold fd across connection */
                 int fd = open(DATA_FILE, O_WRONLY | O_CREAT | O_APPEND, 0644);
                 if (fd >= 0) {
                     size_t total_written = 0;
@@ -154,6 +167,8 @@ done:
     return NULL;
 }
 
+#if !USE_AESD_CHAR_DEVICE
+/* Write a timestamp to the data file every 10 seconds */
 static void *timer_thread(void *arg)
 {
     (void)arg;
@@ -181,6 +196,7 @@ static void *timer_thread(void *arg)
     }
     return NULL;
 }
+#endif
 
 int main(int argc, char *argv[])
 {
@@ -191,7 +207,9 @@ int main(int argc, char *argv[])
 
     openlog("aesdsocket", LOG_PID, LOG_USER);
 
+#if !USE_AESD_CHAR_DEVICE
     remove(DATA_FILE);
+#endif
 
     struct sigaction sa;
     memset(&sa, 0, sizeof(sa));
@@ -244,8 +262,10 @@ int main(int argc, char *argv[])
 
     syslog(LOG_INFO, "Listening on port %d", PORT);
 
+#if !USE_AESD_CHAR_DEVICE
     pthread_t timer_tid;
     pthread_create(&timer_tid, NULL, timer_thread, NULL);
+#endif
 
     while (1) {
         struct sockaddr_in client_addr;
@@ -257,7 +277,7 @@ int main(int argc, char *argv[])
         }
 
         int client_fd = accept(server_fd, (struct sockaddr *)&client_addr, &client_len);
-        
+
         if (client_fd < 0) {
             if (caught_signal) {
                 if (errno == EWOULDBLOCK || errno == EAGAIN)
@@ -304,8 +324,10 @@ int main(int argc, char *argv[])
         server_fd = -1;
     }
 
+#if !USE_AESD_CHAR_DEVICE
     pthread_cancel(timer_tid);
     pthread_join(timer_tid, NULL);
+#endif
 
     while (!SLIST_EMPTY(&thread_head)) {
         struct thread_entry *e = SLIST_FIRST(&thread_head);
