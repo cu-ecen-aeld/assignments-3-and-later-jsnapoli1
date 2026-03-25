@@ -2,7 +2,8 @@
 # Supports cross-compilation via Buildroot TARGET_CONFIGURE_OPTS
 
 CC ?= $(CROSS_COMPILE)gcc
-CFLAGS ?= -Wall -Werror -g -DUSE_AESD_CHAR_DEVICE=1
+CFLAGS ?= -Wall -Werror -g
+CFLAGS += -DUSE_AESD_CHAR_DEVICE=1
 LDFLAGS += -pthread
 TARGET = aesdsocket
 

@@ -1,5 +1,5 @@
-# README - ECEN 5713 Assignments 3, 4, 5, 6, and 7
-This repository includes prior Assignment 3 work, Assignment 4 Part 1 threading updates, Assignment 5 Part 1 socket-server deliverables, Assignment 6 Part 1 multi-threaded socket-server extensions, and Assignment 8 circular buffer implementation.
+# README - ECEN 5713 Assignments 3, 4, 5, 6, 7, and 9
+This repository includes prior Assignment 3 work, Assignment 4 Part 1 threading updates, Assignment 5 Part 1 socket-server deliverables, Assignment 6 Part 1 multi-threaded socket-server extensions, Assignment 8 circular buffer implementation, and Assignment 9 custom llseek support.
 
 ## Assignment 3 Part 1 - Linux Syscalls
 
@@ -268,6 +268,35 @@ Implemented a circular (ring) buffer in `aesd-char-driver/aesd-circular-buffer.c
 ```
 
 Both scripts build via CMake in a `build/` subdirectory and run the Unity-based test runner. The circular buffer tests are in `assignment-autotest/test/assignment7/Test_circular_buffer.c`.
+
+## Assignment 9 - Custom llseek for aesd-char-driver
+
+### Summary
+
+Added custom seek support to the `aesd-char-driver` by implementing an `llseek` file_operations handler that supports all three POSIX seek modes: `SEEK_SET`, `SEEK_CUR`, and `SEEK_END`. This enables userspace programs to use `lseek()` to navigate within the circular buffer's logical data stream.
+
+### Architecture
+
+The seek implementation treats all entries in the circular buffer as a single concatenated byte stream, consistent with how `aesd_read` interprets `f_pos`. The "file size" is computed on-demand by summing the `size` field of all valid entries.
+
+**Key components:**
+
+- **`aesd_circular_buffer_total_size()`** (aesd-circular-buffer.c) — A helper function that walks the valid entries in the circular buffer and returns their total byte count. Uses the same entry-counting logic as `find_entry_offset_for_fpos` (modular arithmetic with the `full` flag for empty/full disambiguation).
+
+- **`aesd_llseek()`** (main.c) — The llseek handler that acquires the device mutex, computes the total buffer size, and delegates to the kernel's `fixed_size_llseek()` for position calculation and validation. `fixed_size_llseek` handles all three `whence` modes, boundary checking, and `f_pos` serialization.
+
+**Design decisions:**
+
+- On-demand size computation rather than cached `total_size` field — with a fixed 10-entry buffer, the O(10) walk is negligible vs. the bookkeeping complexity of maintaining a cache across writes and evictions
+- `fixed_size_llseek` instead of manual `switch` — leverages the kernel's battle-tested implementation for boundary validation, `f_pos` locking, and rejection of unsupported whence values (`SEEK_DATA`, `SEEK_HOLE`)
+- Mutex held across both size computation and seek — prevents TOCTOU races where a concurrent write could change the buffer contents between computing the size and applying the seek
+
+### Work Summary (with commit hashes and dates)
+
+- 69df602 (2026-03-07): Added assignment 9 implementation plan (`plan-assignment9.md`)
+- 4fcac25 (2026-03-07): Implemented `aesd_circular_buffer_total_size` helper function
+- 4bad930 (2026-03-07): Implemented `aesd_llseek` with SEEK_SET/SEEK_CUR/SEEK_END support and registered in file_operations
+- 9e5f422 (2026-03-07): Added code review documentation (`code-review-assignment9.md`)
 
 ### AI Use
 Claude Code was used to assist with this assignment.

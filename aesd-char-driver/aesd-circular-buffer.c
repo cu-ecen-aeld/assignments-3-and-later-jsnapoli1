@@ -122,6 +122,54 @@ void aesd_circular_buffer_add_entry(struct aesd_circular_buffer *buffer, const s
 }
 
 /**
+* Computes the total number of bytes stored across all valid entries in the
+* circular buffer.  Any necessary locking must be performed by the caller.
+* @param buffer the buffer to compute the total size of
+* @return the sum of all entry sizes, or 0 if the buffer is empty
+*/
+size_t aesd_circular_buffer_total_size(struct aesd_circular_buffer *buffer)
+{
+    /**
+     * Pseudocode:
+     *   1. Determine how many entries are valid (same logic as find_entry):
+     *        - If buffer is empty (not full and in_offs == out_offs), return 0
+     *        - If full: count = MAX (10)
+     *        - Else: count = (in_offs - out_offs + MAX) % MAX
+     *   2. Walk from out_offs through 'count' entries, accumulating each
+     *      entry's size into a running total
+     *   3. Return the total
+     */
+
+    size_t total = 0;
+    uint8_t num_entries;
+    uint8_t i;
+    uint8_t current;
+
+    /* Step 1: empty buffer returns 0 */
+    if (!buffer->full && (buffer->in_offs == buffer->out_offs))
+        return 0;
+
+    /* Determine valid entry count */
+    if (buffer->full) {
+        num_entries = AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED;
+    } else {
+        num_entries = (buffer->in_offs - buffer->out_offs
+                       + AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED)
+                      % AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED;
+    }
+
+    /* Step 2: sum all entry sizes */
+    current = buffer->out_offs;
+    for (i = 0; i < num_entries; i++) {
+        total += buffer->entry[current].size;
+        current = (current + 1) % AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED;
+    }
+
+    /* Step 3: return accumulated total */
+    return total;
+}
+
+/**
 * Initializes the circular buffer described by @param buffer to an empty struct
 */
 void aesd_circular_buffer_init(struct aesd_circular_buffer *buffer)

@@ -1,5 +1,8 @@
 /**
- * aesdsocket.c - Multi-threaded stream socket server for AESD Assignment 6 Part 1.
+ * aesdsocket.c - Multi-threaded stream socket server for AESD Assignment 9.
+ *
+ * Adds support for AESDCHAR_IOCSEEKTO ioctl command handling when the socket
+ * receives a specially formatted seek command string.
  */
 
 #include <stdio.h>
@@ -18,6 +21,8 @@
 #include <sys/queue.h>
 #include <time.h>
 #include <stdbool.h>
+#include <sys/ioctl.h>
+#include "../aesd-char-driver/aesd_ioctl.h"
 
 #ifndef USE_AESD_CHAR_DEVICE
 #define USE_AESD_CHAR_DEVICE 1
@@ -32,6 +37,13 @@
 #else
 #define DATA_FILE "/var/tmp/aesdsocketdata"
 #endif
+
+/**
+ * Prefix string that identifies an ioctl seek command.
+ * Commands matching this prefix are handled specially rather than
+ * being written to the device.
+ */
+#define IOCTL_SEEKTO_PREFIX "AESDCHAR_IOCSEEKTO:"
 
 static int server_fd = -1;
 static volatile sig_atomic_t caught_signal = 0;
@@ -62,28 +74,111 @@ static void cleanup(void)
     closelog();
 }
 
-/* Send all contents of DATA_FILE to the client */
+/**
+ * Send file contents to client starting from the current file offset of
+ * the given fd.  This function does NOT open a new fd — the caller is
+ * responsible for providing an fd positioned where reading should start.
+ *
+ * @param client_fd  Socket descriptor to send data to.
+ * @param fd         Already-open file descriptor to read from.
+ * @return 0 on success, -1 on failure.
+ */
+static int send_from_fd(int client_fd, int fd)
+{
+    char buf[BUF_SIZE];
+    ssize_t nread;
+    while ((nread = read(fd, buf, sizeof(buf))) > 0) {
+        ssize_t total_sent = 0;
+        while (total_sent < nread) {
+            ssize_t sent = send(client_fd, buf + total_sent,
+                                nread - total_sent, 0);
+            if (sent <= 0)
+                return -1;
+            total_sent += sent;
+        }
+    }
+    return 0;
+}
+
+/* Send all contents of DATA_FILE to the client (opens a fresh fd) */
 static int send_file_contents(int client_fd)
 {
     int fd = open(DATA_FILE, O_RDONLY);
     if (fd < 0)
         return -1;
 
-    char buf[BUF_SIZE];
-    ssize_t nread;
-    while ((nread = read(fd, buf, sizeof(buf))) > 0) {
-        ssize_t total_sent = 0;
-        while (total_sent < nread) {
-            ssize_t sent = send(client_fd, buf + total_sent, nread - total_sent, 0);
-            if (sent <= 0) {
-                close(fd);
-                return -1;
-            }
-            total_sent += sent;
-        }
-    }
+    int rc = send_from_fd(client_fd, fd);
     close(fd);
-    return 0;
+    return rc;
+}
+
+/**
+ * Pseudocode Block 5 — Handle AESDCHAR_IOCSEEKTO command from socket
+ *
+ *   FUNCTION handle_ioctl_seekto(client_fd, line_buf, line_len):
+ *     EXTRACT the "X,Y" portion after the "AESDCHAR_IOCSEEKTO:" prefix
+ *     PARSE X as write_cmd (unsigned int)
+ *     PARSE Y as write_cmd_offset (unsigned int)
+ *     IF parsing fails: LOG error and RETURN
+ *     OPEN /dev/aesdchar with O_RDWR
+ *       (must use same fd for ioctl AND subsequent read so file offset is shared)
+ *     CONSTRUCT struct aesd_seekto with parsed values
+ *     CALL ioctl(fd, AESDCHAR_IOCSEEKTO, &seekto)
+ *     IF ioctl fails: LOG error, CLOSE fd, RETURN
+ *     READ from the SAME fd (now positioned by ioctl) and send to client
+ *     CLOSE fd
+ *
+ * Key design decision: we open the device with O_RDWR and use the SAME
+ * file descriptor for both the ioctl (which sets f_pos) and the read
+ * (which uses f_pos).  Opening a separate fd for reading would reset
+ * f_pos to 0, defeating the seek.
+ */
+static void handle_ioctl_seekto(int client_fd, const char *line_buf,
+                                size_t line_len)
+{
+    unsigned int write_cmd, write_cmd_offset;
+
+    /* Skip past the prefix to reach the "X,Y" parameters */
+    const char *params = line_buf + strlen(IOCTL_SEEKTO_PREFIX);
+
+    /*
+     * sscanf with "%u,%u" parses two unsigned decimal integers separated
+     * by a comma.  Return value of 2 means both were parsed successfully.
+     */
+    if (sscanf(params, "%u,%u", &write_cmd, &write_cmd_offset) != 2) {
+        syslog(LOG_ERR, "Failed to parse IOCSEEKTO parameters from: %.*s",
+               (int)line_len, line_buf);
+        return;
+    }
+
+    /*
+     * O_RDWR is required because:
+     * - The ioctl needs write-direction access (it modifies kernel state)
+     * - The subsequent read needs read access
+     * Using a single fd ensures the file offset set by ioctl persists
+     * into the read call.
+     */
+    int fd = open(DATA_FILE, O_RDWR);
+    if (fd < 0) {
+        syslog(LOG_ERR, "Failed to open %s for ioctl: %s",
+               DATA_FILE, strerror(errno));
+        return;
+    }
+
+    struct aesd_seekto seekto;
+    seekto.write_cmd = write_cmd;
+    seekto.write_cmd_offset = write_cmd_offset;
+
+    if (ioctl(fd, AESDCHAR_IOCSEEKTO, &seekto) != 0) {
+        syslog(LOG_ERR, "AESDCHAR_IOCSEEKTO ioctl failed: %s",
+               strerror(errno));
+        close(fd);
+        return;
+    }
+
+    /* Read from the same fd (file offset is now set by ioctl) and send */
+    send_from_fd(client_fd, fd);
+    close(fd);
 }
 
 /* Handle a single client connection: receive data, write to file, send back */
@@ -117,28 +212,53 @@ static void *connection_thread(void *arg)
 
                 pthread_mutex_lock(&data_mutex);
 
-                /* Open fd, write, close — do not hold fd across connection */
-                int fd = open(DATA_FILE, O_WRONLY | O_CREAT | O_APPEND, 0644);
-                if (fd >= 0) {
-                    size_t total_written = 0;
-                    while (total_written < line_len) {
-                        ssize_t written = write(fd, line_buf + total_written, line_len - total_written);
-                        if (written < 0) {
-                            if (errno == EINTR) {
-                                continue;
+#if USE_AESD_CHAR_DEVICE
+                /*
+                 * Pseudocode Block 5 (continued) — Dispatch logic
+                 *
+                 *   IF line starts with "AESDCHAR_IOCSEEKTO:":
+                 *     DO NOT write this line to the device
+                 *     CALL handle_ioctl_seekto to issue ioctl and send result
+                 *   ELSE:
+                 *     (normal path: write to device, read all content back)
+                 *
+                 * strncmp compares only the prefix length so trailing
+                 * parameters don't affect the match.  line_len must be
+                 * at least as long as the prefix for this to be valid.
+                 */
+                if (line_len >= strlen(IOCTL_SEEKTO_PREFIX) &&
+                    strncmp(line_buf, IOCTL_SEEKTO_PREFIX,
+                            strlen(IOCTL_SEEKTO_PREFIX)) == 0) {
+                    handle_ioctl_seekto(client_fd, line_buf, line_len);
+                } else {
+#endif
+                    /* Normal path: write line to device, then send all back */
+                    int fd = open(DATA_FILE, O_WRONLY | O_CREAT | O_APPEND, 0644);
+                    if (fd >= 0) {
+                        size_t total_written = 0;
+                        while (total_written < line_len) {
+                            ssize_t written = write(fd, line_buf + total_written,
+                                                    line_len - total_written);
+                            if (written < 0) {
+                                if (errno == EINTR)
+                                    continue;
+                                syslog(LOG_ERR, "write failed: %s",
+                                       strerror(errno));
+                                break;
                             }
-                            syslog(LOG_ERR, "write failed: %s", strerror(errno));
-                            break;
+                            total_written += written;
                         }
-                        total_written += written;
+                        if (total_written != line_len) {
+                            syslog(LOG_ERR, "incomplete write: %zu/%zu bytes",
+                                   total_written, line_len);
+                        }
+                        close(fd);
                     }
-                    if (total_written != line_len) {
-                        syslog(LOG_ERR, "incomplete write: %zu/%zu bytes", total_written, line_len);
-                    }
-                    close(fd);
-                }
 
-                send_file_contents(client_fd);
+                    send_file_contents(client_fd);
+#if USE_AESD_CHAR_DEVICE
+                }
+#endif
 
                 pthread_mutex_unlock(&data_mutex);
 
@@ -276,7 +396,8 @@ int main(int argc, char *argv[])
             fcntl(server_fd, F_SETFL, flags | O_NONBLOCK);
         }
 
-        int client_fd = accept(server_fd, (struct sockaddr *)&client_addr, &client_len);
+        int client_fd = accept(server_fd, (struct sockaddr *)&client_addr,
+                               &client_len);
 
         if (client_fd < 0) {
             if (caught_signal) {

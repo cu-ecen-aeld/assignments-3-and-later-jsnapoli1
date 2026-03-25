@@ -136,8 +136,64 @@ out:
     return retval;
 }
 
+/* Seek to a byte position within the circular buffer's logical data stream */
+loff_t aesd_llseek(struct file *filp, loff_t offset, int whence)
+{
+    struct aesd_dev *dev = filp->private_data;
+    loff_t new_pos;
+    size_t total_size;
+
+    PDEBUG("llseek offset %lld whence %d", offset, whence);
+
+    /**
+     * Pseudocode:
+     *   1. Acquire the device mutex — we read buffer entry sizes, so we
+     *      must prevent concurrent writes from adding or evicting entries
+     *      while we compute the total size
+     *   2. Compute the total size of all data in the circular buffer by
+     *      summing every valid entry's size; this acts as the logical
+     *      "file size" for seek purposes
+     *   3. Use fixed_size_llseek to handle the three whence modes:
+     *        - SEEK_SET: new_pos = offset
+     *        - SEEK_CUR: new_pos = current f_pos + offset
+     *        - SEEK_END: new_pos = total_size + offset
+     *      Validate that the resulting position is in [0, total_size]
+     *   4. Release the mutex and return the new position (or error)
+     */
+
+    /* Step 1: lock the device to get a consistent view of the buffer */
+    if (mutex_lock_interruptible(&dev->lock))
+        return -ERESTARTSYS;
+
+    /* Step 2: compute logical file size from circular buffer contents */
+    total_size = aesd_circular_buffer_total_size(&dev->buffer);
+
+    /*
+     * Step 3: use the kernel's fixed_size_llseek helper
+     *
+     * fixed_size_llseek handles all three whence values (SEEK_SET,
+     * SEEK_CUR, SEEK_END) and validates the resulting position against
+     * the provided size.  It updates filp->f_pos on success and returns
+     * -EINVAL for out-of-range positions.
+     *
+     * We use this rather than a manual switch because:
+     *   - It correctly handles locking of filp->f_pos via inode->i_mutex
+     *     (the kernel takes care of the file position lock internally)
+     *   - It matches standard POSIX semantics exactly
+     *   - It avoids reimplementing boundary checks that the kernel
+     *     already provides and tests
+     */
+    new_pos = fixed_size_llseek(filp, offset, whence, total_size);
+
+    /* Step 4: release the device mutex */
+    mutex_unlock(&dev->lock);
+
+    return new_pos;
+}
+
 struct file_operations aesd_fops = {
     .owner =    THIS_MODULE,
+    .llseek =   aesd_llseek,
     .read =     aesd_read,
     .write =    aesd_write,
     .open =     aesd_open,
